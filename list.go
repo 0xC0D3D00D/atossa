@@ -10,6 +10,8 @@ import (
 const internalListType = 'L'
 
 var ErrInvalidListMetadata = errors.New("Invalid list metadata")
+var ErrNilKey = errors.New("NILKEY Key is nil")
+var ErrInternalInvalidDirection = errors.New("INTERNAL Invalid direction")
 
 type Direction uint8
 
@@ -171,14 +173,11 @@ func listPop(key []byte, direction Direction) ([]byte, error) {
 			itemId = strconv.FormatInt(listMetadata.first, 16)
 			listMetadata.first++
 			listMetadata.size--
-		} else if direction == DirectionRight {
+		} else {
 			itemId = strconv.FormatInt(listMetadata.last, 16)
 			listMetadata.last--
 			listMetadata.size--
-		} else {
-			return errors.New("BUG: Invalid direction")
 		}
-
 		itemKey := append([]byte{}, internalKey...)
 		itemKey = append(itemKey, ':')
 		itemKey = append(itemKey, itemId...)
@@ -208,7 +207,39 @@ func listPop(key []byte, direction Direction) ([]byte, error) {
 	return value, err
 }
 
+func listCreate(txn *badger.Txn, key []byte, values [][]byte) error {
+	if values == nil {
+		values = [][]byte{[]byte{}}
+	}
+	internalKey := append([]byte(internalKeyPrefix), key...)
+	itemKeyPrefix := append([]byte(internalKey), ':')
+
+	size := len(values)
+	metadata := ListMetadata{0, int64(size - 1), uint32(size)}
+	err := txn.Set(internalKey, []byte(metadata.String()))
+	if err != nil {
+		return err
+	}
+
+	for idx, value := range values {
+		itemId := strconv.FormatUint(uint64(idx), 16)
+		itemKey := append(itemKeyPrefix, itemId...)
+		err = txn.Set(itemKey, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func listPush(key []byte, values [][]byte, direction Direction) (uint32, error) {
+	if len(key) == 0 {
+		return 0, ErrNilKey
+	}
+	if direction != DirectionLeft && direction != DirectionRight {
+		return 0, ErrInternalInvalidDirection
+	}
+
 	internalKey := append([]byte(internalKeyPrefix), key...)
 
 	size := uint32(0)
@@ -220,52 +251,29 @@ func listPush(key []byte, values [][]byte, direction Direction) (uint32, error) 
 			return ErrWrongType
 		}
 
-		size = 1
-		metadata := ListMetadata{0, 0, size}
-
 		item, err := txn.Get(internalKey)
 		if err == badger.ErrKeyNotFound {
-			var value []byte
-			if direction == DirectionLeft {
-				value = values[len(values)-1]
-				values = values[:len(values)-1]
-			} else if direction == DirectionRight {
-				value = values[0]
-				values = values[1:]
-			} else {
-				return errors.New("BUG: invalid direction")
+			size = uint32(len(values))
+			if values == nil {
+				size = 1
 			}
-
-			err = txn.Set(internalKey, []byte(metadata.String()))
-			if err != nil {
-				return err
-			}
-
-			itemKey := append([]byte{}, internalKey...)
-			itemKey = append(itemKey, ":0"...)
-			err = txn.Set(itemKey, value)
-			if err != nil {
-				return err
-			}
-			if len(values) == 1 {
-				return nil
-			}
+			return listCreate(txn, key, values)
 		} else if err != nil {
 			return err
-		} else {
-			metadataVal, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			readMetadata, err := UnmarshalMetadata(metadataVal)
-			if err != nil {
-				return err
-			}
-			var ok bool
-			metadata, ok = readMetadata.(ListMetadata)
-			if !ok {
-				return ErrWrongType
-			}
+		}
+
+		metadataVal, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		readMetadata, err := UnmarshalMetadata(metadataVal)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		metadata, ok := readMetadata.(ListMetadata)
+		if !ok {
+			return ErrWrongType
 		}
 
 		var start, step int
@@ -274,23 +282,19 @@ func listPush(key []byte, values [][]byte, direction Direction) (uint32, error) 
 			start = len(values) - 1
 			step = -1
 			condition = func(i int) bool { return i >= 0 }
-		} else if direction == DirectionRight {
+		} else {
 			start = 0
 			step = 1
 			condition = func(i int) bool { return i < len(values) }
-		} else {
-			return errors.New("BUG: Invalid direction")
 		}
 		for i := start; condition(i); i += step {
 			var itemId string
 			if direction == DirectionLeft {
 				metadata.first--
 				itemId = strconv.FormatInt(metadata.first, 16)
-			} else if direction == DirectionRight {
+			} else {
 				metadata.last++
 				itemId = strconv.FormatInt(metadata.last, 16)
-			} else {
-				return errors.New("BUG: Invalid direction")
 			}
 			metadata.size++
 
