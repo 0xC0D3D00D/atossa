@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/0xC0D3D00D/atossa.svg?branch=master)](https://travis-ci.org/0xC0D3D00D/atossa)
+[![Build Status](https://travis-ci.com/0xC0D3D00D/atossa.svg?branch=master)](https://travis-ci.com/0xC0D3D00D/atossa)
 [![Coverage Status](https://coveralls.io/repos/github/0xC0D3D00D/atossa/badge.svg?branch=master)](https://coveralls.io/github/0xC0D3D00D/atossa?branch=master)
 [![codebeat badge](https://codebeat.co/badges/92e8c83f-f3a6-4052-a33e-9184e93eda9f)](https://codebeat.co/projects/github-com-0xc0d3d00d-atossa-master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/0xc0d3d00d/atossa)](https://goreportcard.com/report/github.com/0xc0d3d00d/atossa)
