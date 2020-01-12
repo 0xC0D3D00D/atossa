@@ -62,6 +62,80 @@ func UnmarshalListMetadata(data []byte) (interface{}, error) {
 	return ListMetadata{first, last, uint32(size)}, nil
 }
 
+func listRange(key []byte, start, end int64) ([][]byte, error) {
+	internalKey := append([]byte(internalKeyPrefix), key...)
+
+	var values [][]byte
+	err := db.View(func(txn *badger.Txn) error {
+		// Ensure there is no simple string key with the same name exists
+		_, err := txn.Get(key)
+		if err != badger.ErrKeyNotFound {
+			return ErrWrongType
+		}
+		metadataItem, err := txn.Get(internalKey)
+		if err == badger.ErrKeyNotFound {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		metadataRaw, err := metadataItem.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		metadata, err := UnmarshalMetadata(metadataRaw)
+		if err != nil {
+			return err
+		}
+		listMetadata, ok := metadata.(ListMetadata)
+		if !ok {
+			return ErrWrongType
+		}
+
+		if start < 0 {
+			start = listMetadata.last + start + 1
+		} else {
+			start = listMetadata.first + start
+		}
+		if start < listMetadata.first {
+			start = listMetadata.first
+		}
+
+		if end < 0 {
+			end = listMetadata.last + end + 1
+		} else {
+			end = listMetadata.first + end
+		}
+		if end > listMetadata.last {
+			end = listMetadata.last
+		}
+
+		if end < start {
+			return nil
+		}
+
+		itemKeyPrefix := append([]byte{}, internalKey...)
+		itemKeyPrefix = append(itemKeyPrefix, ':')
+
+		values = make([][]byte, end-start+1)
+		for index := start; index <= end; index++ {
+			itemId := strconv.FormatInt(index, 16)
+			itemKey := append(itemKeyPrefix, itemId...)
+			item, err := txn.Get(itemKey)
+			if err != nil {
+				return err
+			}
+			values[index-start], err = item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return values, err
+}
+
 func listPop(key []byte, direction Direction) ([]byte, error) {
 	internalKey := append([]byte(internalKeyPrefix), key...)
 

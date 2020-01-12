@@ -149,6 +149,33 @@ func llen(args []interface{}) ([]byte, error) {
 	return goresp.Marshal(value)
 }
 
+func lrange(args []interface{}) ([]byte, error) {
+	if len(args) != 4 {
+		return nil, errors.New("ERR wrong number of arguments for 'lrange' command")
+	}
+
+	key := args[1].([]byte)
+
+	startStr := string(args[2].([]byte))
+	start, err := strconv.ParseInt(startStr, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	endStr := string(args[3].([]byte))
+	end, err := strconv.ParseInt(endStr, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := listRange(key, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	return goresp.Marshal(values)
+}
+
 func keys(args []interface{}) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, errors.New("ERR Invalid argument")

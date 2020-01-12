@@ -205,6 +205,17 @@ var commandMap = map[string]command{
 		stepCount:   1,
 		handler:     lindex,
 	},
+	"LRANGE": command{
+		name:  "lrange",
+		arity: 4,
+		flags: []CommandFlag{
+			CommandFlagReadonly,
+		},
+		firstKeyPos: 1,
+		lastKeyPos:  1,
+		stepCount:   1,
+		handler:     lrange,
+	},
 	"LLEN": command{
 		name:  "llen",
 		arity: 2,
