@@ -136,6 +136,19 @@ func rpop(args []interface{}) ([]byte, error) {
 	return goresp.Marshal(value)
 }
 
+func llen(args []interface{}) ([]byte, error) {
+	if len(args) != 2 {
+		return nil, errors.New("ERR wrong number of arguments for 'llen' command")
+	}
+
+	key := args[1].([]byte)
+	value, err := listLength(key)
+	if err != nil {
+		return nil, err
+	}
+	return goresp.Marshal(value)
+}
+
 func keys(args []interface{}) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, errors.New("ERR Invalid argument")

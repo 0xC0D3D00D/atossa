@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	badger "github.com/dgraph-io/badger"
 	"strconv"
 	"strings"
@@ -240,12 +239,50 @@ func listPush(key []byte, values [][]byte, direction Direction) (uint32, error) 
 	return size, err
 }
 
+func listLength(key []byte) (uint32, error) {
+	internalKey := append([]byte(internalKeyPrefix), key...)
+
+	length := uint32(0)
+	err := db.View(func(txn *badger.Txn) error {
+		// Ensure there is no simple string key with the same name exists
+		_, err := txn.Get(key)
+		if err != badger.ErrKeyNotFound {
+			return ErrWrongType
+		}
+
+		item, err := txn.Get(internalKey)
+		if err == badger.ErrKeyNotFound {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		metadataVal, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		readMetadata, err := UnmarshalMetadata(metadataVal)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		metadata, ok := readMetadata.(ListMetadata)
+		if !ok {
+			return ErrWrongType
+		}
+
+		length = metadata.size
+		return nil
+	})
+
+	return length, err
+}
+
 func listIndex(key []byte, index int64) ([]byte, error) {
 	internalKey := append([]byte(internalKeyPrefix), key...)
 
 	var val []byte
 
-	fmt.Println(val)
 	err := db.View(func(txn *badger.Txn) error {
 		// Ensure there is no simple string key with the same name exists
 		_, err := txn.Get(key)
