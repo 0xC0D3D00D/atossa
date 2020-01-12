@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/0xc0d3d00d/goresp"
-	badger "github.com/dgraph-io/badger"
+	badger "github.com/dgraph-io/badger/v2"
 	"go.uber.org/zap"
 	"io"
 	"net"

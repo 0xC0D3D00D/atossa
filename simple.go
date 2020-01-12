@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/0xc0d3d00d/goresp"
-	badger "github.com/dgraph-io/badger"
+	badger "github.com/dgraph-io/badger/v2"
 )
 
 func set(args []interface{}) ([]byte, error) {
