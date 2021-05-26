@@ -6,5 +6,5 @@ require (
 	github.com/0xc0d3d00d/goresp v0.0.0-20200111171215-82c6f67aa482
 	github.com/campoy/gomodtest v2.0.0+incompatible
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	go.uber.org/zap v1.16.0
+	go.uber.org/zap v1.17.0
 )
